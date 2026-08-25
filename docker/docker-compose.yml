@@ -1,0 +1,79 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: djs_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: distributed_scheduler
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d distributed_scheduler"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: djs_api
+    restart: always
+    environment:
+      PORT: 4000
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/distributed_scheduler
+      JWT_SECRET: super-secret-distributed-job-scheduler-jwt-key-2026
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    container_name: djs_worker
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/distributed_scheduler
+      WORKER_CONCURRENCY: 5
+      WORKER_POLL_INTERVAL_MS: 500
+      WORKER_HEARTBEAT_INTERVAL_MS: 5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.scheduler
+    container_name: djs_scheduler
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/distributed_scheduler
+      SCHEDULER_POLL_INTERVAL_MS: 1000
+      REAPER_INTERVAL_MS: 10000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: djs_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
