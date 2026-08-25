@@ -15,8 +15,7 @@ import {
   DistributedLock,
 } from '../types/index.js';
 
-const API_BASE = 'http://localhost:4000/api/v1';
-
+const API_BASE = 'https://distributed-task-scheduler-bu2i.onrender.com/api/v1';
 /** Decodes the role claim out of a JWT without verifying it — verification
  *  happens server-side on every request; this is purely for UI gating
  *  (hiding/disabling buttons the user isn't allowed to use). */
